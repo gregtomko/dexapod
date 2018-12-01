@@ -93,15 +93,34 @@ def get_closest_arm_positions(rotation_xyz, translation_xyz):
         closest_arm_positions[arm_id] = find_closest_point_array(arm_xyz_arrays[arm_id], end_bearing_xyz_array[arm_id])
     return closest_arm_positions
 
-def update_coordinate_system(machine, fixture):
-    fixture_updated = {}
-    for axis_id in machine:
-        fixture_updated[axis_id] = machine[axis_id] + fixture['offset_' + axis_id]
+def fixture_to_machine_coordinates(fixture):
+    fixture_rotation = [fixture['offset_a'], fixture['offset_b'], fixture['offset_c']]
+    fixture_position = [fixture['x'], fixture['y'], fixture['z']]
+    # Find machine xyz position from fixture xyzabc offsets
+    machine_rotated = rotation_matrix(fixture_rotation, fixture_position)
+    machine_translated_x = machine_rotated[0] + fixture['offset_x']
+    machine_translated_y = machine_rotated[1] + fixture['offset_y']
+    machine_translated_z = machine_rotated[2] + fixture['offset_z']
+    # Find machine abc rotation from fixture abc rotation
+    machine_rotated_a = fixture['a'] + fixture['offset_a']
+    machine_rotated_b = fixture['b'] + fixture['offset_b']
+    machine_rotated_c = fixture['c'] + fixture['offset_c']
+    return {'x': machine_translated_x,
+            'y': machine_translated_y,
+            'z': machine_translated_z,
+            'a': machine_rotated_a,
+            'b': machine_rotated_b,
+            'c': machine_rotated_c}
+    
+
+
+def update_fixture_offsets(machine, fixture, r):
     fixture_offsets = {}
     for axis_id in fixture_updated:
-        fixture_offsets['offset_' + axis_id] = fixture['offset_'  + axis_id]
-    fixture_updated.update(fixture_offsets)
-    return fixture_updated
+        fixture_offset = fixture['offset_'  + axis_id]
+        fixture_offsets['offset_' + axis_id] = fixture_offset
+        r.set('fixture' + fixture['id'] + '_offset_' + axis_id, fixture_offset)
+    fixture_updated.update(fixture_offsets) 
     
     
     
