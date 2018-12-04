@@ -2,7 +2,8 @@
 
 import math
 import time
-from dexapod import settings
+##from dexapod import settings
+import settings
 
 def rotation_matrix(rotation_angle_xyz, position_xyz):
     rotation_angle_x = rotation_angle_xyz[0]
@@ -32,10 +33,11 @@ def rotation_matrix(rotation_angle_xyz, position_xyz):
     y2 = Ayx*x1 + Ayy*y1 + Ayz*z1
     z2 = Azx*x1 + Azy*y1 + Azz*z1
     return([x2, y2, z2])
-    
+
 def find_closest_point_array(point_array, test_point):
     closest_distance = 999999
     closest_point = []
+    array_counter = 0
     for point in point_array:
         delta_x = point[0] - test_point[0]
         delta_y = point[1] - test_point[1]
@@ -44,7 +46,8 @@ def find_closest_point_array(point_array, test_point):
         point_distance = abs(settings.second_arm_length - arm_distance)
         if point_distance < closest_distance:
             closest_distance = point_distance
-            closest_point = [point[0], point[1], point[2]]
+            closest_point = [point[0], point[1], point[2], array_counter]
+        array_counter += 1
     return(closest_point)
 
 def create_arm_xyz_arrays(arm_rotation_data, radial_offset, xyz_array):
@@ -63,31 +66,39 @@ def create_arm_xyz_arrays(arm_rotation_data, radial_offset, xyz_array):
         f.close()
         arm_xyz_data[arm_id] = arm_xyz_array
     return arm_xyz_data
-    
+
 def create_circle_xyz_array(arm_start_angle, arm_end_angle, angular_resolution, arm_radius, arm_radial_offset):
     xyz_array = []
     arm_angle = float(arm_start_angle)
     while arm_angle < arm_end_angle:
         arm_bearing_x = (math.cos(math.radians(arm_angle)) * arm_radius) + arm_radial_offset
         arm_bearing_z = math.sin(math.radians(arm_angle)) * arm_radius
-        xyz_array.append([arm_bearing_x, 0, arm_bearing_z, arm_angle])
+        xyz_array.append([arm_bearing_x, 0, arm_bearing_z])
         arm_angle += angular_resolution
     return xyz_array
-    
-def end_xyz_rotated_translated(rotation_angle_xyz, translation_xyz):
+
+def end_xyz_rotated_translated(machine_position):
+    rotation_angle_xyz = [machine_position['a'], machine_position['b'], machine_position['c']]
     end_xyz_rotated = {}
     for end_bearing_id in settings.end_bearing_offsets:
         end_xyz_rotated[end_bearing_id] = rotation_matrix(rotation_angle_xyz, settings.end_bearing_offsets[end_bearing_id])
     end_xyz_translated = {}
     for end_bearing_id in end_xyz_rotated:
-        end_bearing_x_translated = end_xyz_rotated[end_bearing_id][0] + translation_xyz[0]
-        end_bearing_y_translated = end_xyz_rotated[end_bearing_id][1] + translation_xyz[1]
-        end_bearing_z_translated = end_xyz_rotated[end_bearing_id][2] + translation_xyz[2]
+        end_bearing_x_translated = end_xyz_rotated[end_bearing_id][0] + machine_position['x']
+        end_bearing_y_translated = end_xyz_rotated[end_bearing_id][1] + machine_position['y']
+        end_bearing_z_translated = end_xyz_rotated[end_bearing_id][2] + machine_position['z']
         end_xyz_translated[end_bearing_id] = [end_bearing_x_translated, end_bearing_y_translated, end_bearing_z_translated]
     return end_xyz_translated
-    
-def get_closest_arm_positions(rotation_xyz, translation_xyz):
-    end_bearing_xyz_array = end_xyz_rotated_translated(rotation_xyz, translation_xyz)
+
+def get_closest_arm_positions(machine_position):
+    end_bearing_xyz_array = end_xyz_rotated_translated(machine_position)
+    closest_arm_positions = {}
+    for arm_id in end_bearing_xyz_array:
+        closest_arm_positions[arm_id] = find_closest_point_array(arm_xyz_arrays[arm_id], end_bearing_xyz_array[arm_id])
+    return closest_arm_positions
+
+def get_arm_positions(machine_position, arm_angles, arm_velocities):
+    end_bearing_xyz_array = end_xyz_rotated_translated(machine_position)
     closest_arm_positions = {}
     for arm_id in end_bearing_xyz_array:
         closest_arm_positions[arm_id] = find_closest_point_array(arm_xyz_arrays[arm_id], end_bearing_xyz_array[arm_id])
