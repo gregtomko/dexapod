@@ -124,15 +124,6 @@ def fixture_to_machine_coordinates(fixture):
             'c': machine_rotated_c}
     
 
-
-def update_fixture_offsets(machine, fixture, r):
-    fixture_offsets = {}
-    for axis_id in fixture_updated:
-        fixture_offset = fixture['offset_'  + axis_id]
-        fixture_offsets['offset_' + axis_id] = fixture_offset
-        r.set('fixture' + fixture['id'] + '_offset_' + axis_id, fixture_offset)
-    fixture_updated.update(fixture_offsets) 
-    
     
     
         
